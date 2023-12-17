@@ -35,15 +35,6 @@ class HexGrid {
     }
 
     render() {
-        // Centers
-        ctx.strokeStyle = '#ff0000';
-        for (let node of Object.values(this.nodes)) {
-            let { x, y } = cubicToPixel(node.q, node.r);
-            ctx.beginPath();
-            ctx.arc(x, y, 5, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.closePath();
-        }
 
         // Paths based on edges
         // ctx.strokeStyle = '#00ff00';
@@ -256,37 +247,84 @@ function generateHexMaze(nodes, edges) {
     }
 }
 
-let player = { q: 2, r: 5, s: -7 };
-
 function aStar(start, end) {
-    // TODO
+    // TODO: make this actually a* and not just bfs
+    let frontier = [start];
+    let visited = [];
+    came_from = new Map();
+
+    // Search for the end node
+    while (frontier.length) {
+        // visit the next node of the frontier
+        let current = frontier.shift();
+        visited.push(current);
+        if (current === end) {
+            break;
+        }
+
+        // add all its neighbors to the frontier
+        for (let edge of current.edges) {
+            let neighbor = edge.a === current ? edge.b : edge.a;
+            if (!visited.includes(neighbor) && !frontier.includes(neighbor)) {
+                frontier.push(neighbor);
+                if (!came_from.has(neighbor)) {
+                    came_from.set(neighbor, current);
+                }
+            }
+        }
+        mark(current, '#cccccc');
+    }
+
+    // Reconstruct the path
+    let path = [];
+    while (end !== start) {
+        path.unshift(end);
+        end = came_from.get(end);
+    }
+    console.log(path)
+    return path;
 }
 
 function render() {
     // Reset
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     // Render hex grid
     graph.render();
-    
+
     //  player
-    let { x, y } = cubicToPixel(player.q, player.r);
-    ctx.fillStyle = '#ff0000';
-    ctx.beginPath();
-    ctx.arc(x, y, scale / 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.closePath();
+    mark(player.pos, '#ff0000');
+
+    // goal
+    if (goal.pos) {
+        mark(goal.pos, '#0000ff');
+    }
+}
+
+function mark(node, color) {
+    ctx.fillStyle = color;
+        let { x, y } = cubicToPixel(node.q, node.r);
+        ctx.beginPath();
+        ctx.arc(x, y, scale / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
 }
 
 canvas.addEventListener('click', (e) => {
     let { q, r, s } = pixelToCubic(e.offsetX, e.offsetY);
-    player = { q, r, s };
+    goal.pos = graph.findNode(q, r, s);
+    let path = aStar(player.pos, goal.pos);
+    for (let node of path) {
+        mark(node, '#00ff00');
+    }
 });
 
 const graph = new HexGrid();
 graph.generateFourtyNineHexes(2, 5);
 generateHexMaze(Object.values(graph.nodes), graph.edges);
-graph.render();
+
+let player = { pos: graph.findNode(2, 5, -7) };
+let goal = {};
 
 const fps = 10;
 setInterval(render, 1000 / fps);
