@@ -272,7 +272,6 @@ function aStar(start, end) {
                 }
             }
         }
-        mark(current, '#cccccc');
     }
 
     // Reconstruct the path
@@ -281,11 +280,19 @@ function aStar(start, end) {
         path.unshift(end);
         end = came_from.get(end);
     }
-    console.log(path)
+    console.log(path);
     return path;
 }
 
-function render() {
+function loop() {
+    // Step player along path
+    player.pos = path.shift() || player.pos;
+    if (player.pos === goal.pos) {
+        goal.pos = null;
+    }
+
+    // Render
+
     // Reset
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -295,6 +302,11 @@ function render() {
     //  player
     mark(player.pos, '#ff0000');
 
+    // path
+    for (let node of path) {
+        mark(node, '#00ff00');
+    }
+
     // goal
     if (goal.pos) {
         mark(goal.pos, '#0000ff');
@@ -303,20 +315,17 @@ function render() {
 
 function mark(node, color) {
     ctx.fillStyle = color;
-        let { x, y } = cubicToPixel(node.q, node.r);
-        ctx.beginPath();
-        ctx.arc(x, y, scale / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.closePath();
+    let { x, y } = cubicToPixel(node.q, node.r);
+    ctx.beginPath();
+    ctx.arc(x, y, scale / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
 }
 
 canvas.addEventListener('click', (e) => {
     let { q, r, s } = pixelToCubic(e.offsetX, e.offsetY);
     goal.pos = graph.findNode(q, r, s);
-    let path = aStar(player.pos, goal.pos);
-    for (let node of path) {
-        mark(node, '#00ff00');
-    }
+    path = aStar(player.pos, goal.pos);
 });
 
 const graph = new HexGrid();
@@ -325,6 +334,7 @@ generateHexMaze(Object.values(graph.nodes), graph.edges);
 
 let player = { pos: graph.findNode(2, 5, -7) };
 let goal = {};
+let path = [];
 
-const fps = 10;
-setInterval(render, 1000 / fps);
+const fps = 3;
+setInterval(loop, 1000 / fps);
