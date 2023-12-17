@@ -5,6 +5,7 @@ const scale = 50;
 class HexGrid {
     constructor() {
         this.nodes = {};
+        this.edges = [];
     }
 
     findNode(q, r, s) {
@@ -21,10 +22,23 @@ class HexGrid {
     }
 
     render() {
+        // Draw hexes
         for (let key in this.nodes) {
             let node = this.nodes[key];
             let { x, y } = cubicToPixel(node.q, node.r);
             drawHexagon(x, y);
+        }
+
+        // Edges
+        for (let edge of this.edges) {
+            let pointA = cubicToPixel(edge.a.q, edge.a.r);
+            let pointB = cubicToPixel(edge.b.q, edge.b.r);
+            ctx.beginPath();
+            ctx.moveTo(pointA.x, pointA.y);
+            ctx.lineTo(pointB.x, pointB.y);
+            ctx.strokeStyle = '#ff0000';
+            ctx.stroke();
+            ctx.closePath();
         }
     }
 
@@ -50,21 +64,31 @@ class HexGrid {
         const offsets = [
             { q: 0, r: 0 },
             { q: 3, r: -2 },
-            { q: 2, r: 1},
+            { q: 2, r: 1 },
             { q: -1, r: 3 },
             { q: -3, r: 2 },
             { q: -2, r: -1 },
             { q: 1, r: -3 },
         ];
         for (let offset of offsets) {
-            created.push(this.generateSevenHexes(q + offset.q, r + offset.r));
+            created = created.concat(this.generateSevenHexes(q + offset.q, r + offset.r));
         }
+        this.createEdgesBetween(created);
         return created;
     }
+
+    createEdgesBetween(nodes) {
+        for (let a of Object.values(nodes)) {
+            for (let b of Object.values(nodes)) {
+                if (a === b) continue;
+                if (Math.abs(a.q - b.q) > 1) continue;
+                if (Math.abs(a.r - b.r) > 1) continue;
+                if (Math.abs(a.s - b.s) > 1) continue;
+                this.edges.push({ a, b });
+            }
+        }
+    }
 }
-const graph = new HexGrid();
-graph.generateFourtyNineHexes(2, 5);
-graph.render();
 
 function cubicToPixel(q, r) {
     qBasis = { x: Math.sqrt(3), y: 0 };
@@ -97,17 +121,13 @@ function drawHexagon(x, y) {
     ctx.translate(-x, -y);
 }
 
-function generateHexMaze(nodes) {
+function generateHexMaze(nodes, edges) {
     // Abstract the grid to a graph and apply prim's
-    let edges = [];
-
-    for (let i = 0; i < 10; i++) {
-        edges.push([]);
-        for (let j = 0; j < 10; j++) {
-            edges[i].push([]);
-
-        }
-    }
 
     // TODO
 }
+
+const graph = new HexGrid();
+graph.generateFourtyNineHexes(2, 5);
+graph.render();
+generateHexMaze(graph.nodes, graph.edges);
