@@ -23,22 +23,41 @@ class HexGrid {
 
     render() {
         // Draw hexes
-        for (let key in this.nodes) {
-            let node = this.nodes[key];
-            let { x, y } = cubicToPixel(node.q, node.r);
-            drawHexagon(x, y);
-        }
+        // for (let node of Object.values(this.nodes)) {
+        //     let { x, y } = cubicToPixel(node.q, node.r);
+        //     drawHexagon(x, y);
+        // }
 
         // Edges
         for (let edge of this.edges) {
             let pointA = cubicToPixel(edge.a.q, edge.a.r);
             let pointB = cubicToPixel(edge.b.q, edge.b.r);
             ctx.beginPath();
-            ctx.moveTo(pointA.x, pointA.y);
-            ctx.lineTo(pointB.x, pointB.y);
+            // ctx.moveTo(pointA.x, pointA.y);
+            // ctx.lineTo(pointB.x, pointB.y);
+            // ctx.strokeStyle = '#ff0000';
+            // ctx.stroke();
+            let halfway = {
+                x: (pointA.x + pointB.x) / 2,
+                y: (pointA.y + pointB.y) / 2
+            };
+            ctx.translate(halfway.x, halfway.y);
+            ctx.rotate(Math.atan2(pointB.y - pointA.y, pointB.x - pointA.x));
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, scale / 2);
             ctx.strokeStyle = '#ff0000';
             ctx.stroke();
+            ctx.rotate(-Math.atan2(pointB.y - pointA.y, pointB.x - pointA.x));
+            ctx.translate(-halfway.x, -halfway.y);
             ctx.closePath();
+        }
+
+        // Coordinates
+        for (let node of Object.values(this.nodes)) {
+            let { x, y } = cubicToPixel(node.q, node.r);
+            ctx.font = '10px Arial';
+            ctx.fillStyle = '#000000';
+            ctx.fillText(`${node.q},${node.r},${node.s}`, x, y);
         }
     }
 
@@ -54,7 +73,7 @@ class HexGrid {
             { q: -1, r: 1 },
         ];
         for (let offset of offsets) {
-            created.push(this.addNode(q + offset.q, r + offset.r, 0));
+            created.push(this.addNode(q + offset.q, r + offset.r, -(q + offset.q) - (r + offset.r)));
         }
         return created;
     }
@@ -81,13 +100,15 @@ class HexGrid {
         for (let a of Object.values(nodes)) {
             for (let b of Object.values(nodes)) {
                 if (a === b) continue;
-                if (Math.abs(a.q - b.q) > 1) continue;
-                if (Math.abs(a.r - b.r) > 1) continue;
-                if (Math.abs(a.s - b.s) > 1) continue;
+                if (cubicDistance(a, b) > 1) continue;
                 this.edges.push({ a, b });
             }
         }
     }
+}
+
+function cubicDistance(a, b) {
+    return Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs(a.s - b.s));
 }
 
 function cubicToPixel(q, r) {
