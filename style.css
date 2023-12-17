@@ -1,5 +1,8 @@
 body {
     background-color: grey;
+    margin: 0;
+    display: grid;
+    place-items: center;
 }
 
 canvas {

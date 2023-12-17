@@ -1,74 +1,70 @@
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 const scale = 50;
-const offsets = [
-    { q: 1, r: -1 },
-    { q: 1, r: 0 },
-    { q: 0, r: -1 },
-    { q: 0, r: 0 },
-    { q: 0, r: 1 },
-    { q: -1, r: 0 },
-    { q: -1, r: 1 },
-];
 
 class HexGrid {
     constructor() {
-        this.nodes = [];
+        this.nodes = {};
     }
 
-    findNodeSlow(q, r, s) {
-        for (let node of this.nodes) {
-            if (node.q === q && node.r === r && node.s === s) {
-                return node;
-            }
-        }
-        return null;
+    findNode(q, r, s) {
+        return this.nodes[`${q},${r},${s}`];
     }
 
     addNode(q, r, s) {
-        this.nodes.push({ q, r, s });
+        if (this.findNode(q, r, s)) {
+            return;
+        }
+        let newNode = { q, r, s };
+        this.nodes[`${q},${r},${s}`] = newNode;
+        return newNode;
     }
 
     render() {
-        for (let node of this.nodes) {
+        for (let key in this.nodes) {
+            let node = this.nodes[key];
             let { x, y } = cubicToPixel(node.q, node.r);
             drawHexagon(x, y);
         }
     }
 
     generateSevenHexes(q, r) {
+        let created = [];
+        const offsets = [
+            { q: 1, r: -1 },
+            { q: 1, r: 0 },
+            { q: 0, r: -1 },
+            { q: 0, r: 0 },
+            { q: 0, r: 1 },
+            { q: -1, r: 0 },
+            { q: -1, r: 1 },
+        ];
         for (let offset of offsets) {
-            this.addNode(q + offset.q, r + offset.r, 0);
+            created.push(this.addNode(q + offset.q, r + offset.r, 0));
         }
+        return created;
     }
 
     generateFourtyNineHexes(q, r) {
+        let created = [];
+        const offsets = [
+            { q: 0, r: 0 },
+            { q: 3, r: -2 },
+            { q: 2, r: 1},
+            { q: -1, r: 3 },
+            { q: -3, r: 2 },
+            { q: -2, r: -1 },
+            { q: 1, r: -3 },
+        ];
         for (let offset of offsets) {
-            this.generateSevenHexes(q + offset.q, r + offset.r);
+            created.push(this.generateSevenHexes(q + offset.q, r + offset.r));
         }
+        return created;
     }
 }
 const graph = new HexGrid();
 graph.generateFourtyNineHexes(2, 5);
 graph.render();
-
-function pixelToCubic(px, py) {
-    pixelToHexMatrix = [
-        [Math.sqrt(3) / 3, -1 / 3],
-        [0, 2 / 3]
-    ];
-
-    // Transform the pixel coordinates to cubic coordinates
-    let q = pixelToHexMatrix[0][0] * px + pixelToHexMatrix[0][1] * py;
-    let r = pixelToHexMatrix[1][0] * px + pixelToHexMatrix[1][1] * py;
-
-    // Round the cubic coordinates to the nearest hexagon
-    let qRounded = Math.round(q);
-    let rRounded = Math.round(r);
-    let sRounded = Math.round(-q - r);
-
-    return { q: qRounded, r: rRounded, s: sRounded };
-}
 
 function cubicToPixel(q, r) {
     qBasis = { x: Math.sqrt(3), y: 0 };
