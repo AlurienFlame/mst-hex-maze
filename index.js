@@ -264,6 +264,7 @@ function aStar(start, end) {
 
         // add all its neighbors to the frontier
         for (let edge of current.edges) {
+            if (!edge.open) continue;
             let neighbor = edge.a === current ? edge.b : edge.a;
             if (!visited.includes(neighbor) && !frontier.includes(neighbor)) {
                 frontier.push(neighbor);
@@ -280,7 +281,6 @@ function aStar(start, end) {
         path.unshift(end);
         end = came_from.get(end);
     }
-    console.log(path);
     return path;
 }
 
@@ -299,13 +299,16 @@ function loop() {
     // Render hex grid
     graph.render();
 
+    // path
+    if (path.length) {
+        connect(player.pos, path[0], '#00ff00');
+        for (let i = 0; i < path.length - 1; i++) {
+            connect(path[i], path[i + 1], '#00ff00');
+        }
+    }
+
     //  player
     mark(player.pos, '#ff0000');
-
-    // path
-    for (let node of path) {
-        mark(node, '#00ff00');
-    }
 
     // goal
     if (goal.pos) {
@@ -319,6 +322,17 @@ function mark(node, color) {
     ctx.beginPath();
     ctx.arc(x, y, scale / 2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.closePath();
+}
+
+function connect(nodeA, nodeB, color) {
+    ctx.strokeStyle = color;
+    let pointA = cubicToPixel(nodeA.q, nodeA.r);
+    let pointB = cubicToPixel(nodeB.q, nodeB.r);
+    ctx.beginPath();
+    ctx.moveTo(pointA.x, pointA.y);
+    ctx.lineTo(pointB.x, pointB.y);
+    ctx.stroke();
     ctx.closePath();
 }
 
@@ -336,5 +350,5 @@ let player = { pos: graph.findNode(2, 5, -7) };
 let goal = {};
 let path = [];
 
-const fps = 3;
+const fps = 10;
 setInterval(loop, 1000 / fps);
