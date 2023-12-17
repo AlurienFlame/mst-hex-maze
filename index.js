@@ -1,6 +1,8 @@
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 const scale = 50;
+let hexWidth = Math.sqrt(3) * scale;
+let hexHeight = 2 * scale;
 
 class HexGrid {
     constructor() {
@@ -33,6 +35,16 @@ class HexGrid {
     }
 
     render() {
+        // Centers
+        ctx.strokeStyle = '#ff0000';
+        for (let node of Object.values(this.nodes)) {
+            let { x, y } = cubicToPixel(node.q, node.r);
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.closePath();
+        }
+
         // Paths based on edges
         // ctx.strokeStyle = '#00ff00';
         // for (let edge of this.edges.filter(edge => edge.open)) {
@@ -99,12 +111,12 @@ class HexGrid {
         }
 
         // Coordinates
-        // for (let node of Object.values(this.nodes)) {
-        //     let { x, y } = cubicToPixel(node.q, node.r);
-        //     ctx.font = '10px Arial';
-        //     ctx.fillStyle = '#000000';
-        //     ctx.fillText(`${node.q},${node.r},${node.s}`, x, y);
-        // }
+        for (let node of Object.values(this.nodes)) {
+            let { x, y } = cubicToPixel(node.q, node.r);
+            ctx.font = '10px Arial';
+            ctx.fillStyle = '#000000';
+            ctx.fillText(`${node.q},${node.r},${node.s}`, x, y);
+        }
     }
 
     generateSevenHexes(q, r) {
@@ -159,6 +171,40 @@ function cubicDistance(a, b) {
     return Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs(a.s - b.s));
 }
 
+function cubicRound(qFloat, rFloat, sFloat) {
+    // Round all coordinates to whole numbers
+    let [q, r, s] = [Math.round(qFloat), Math.round(rFloat), Math.round(sFloat)];
+
+    // Reset coordinate with largest drift
+    let [deltaQ, deltaR, deltaS] = [Math.abs(q - qFloat), Math.abs(r - rFloat), Math.abs(s - sFloat)];
+    let max = Math.max(deltaQ, deltaR, deltaS);
+    if (deltaQ === max) {
+        q = -r - s;
+    } else if (deltaR === max) {
+        r = -q - s;
+    } else {
+        s = -q - r;
+    }
+    return { q, r, s };
+}
+
+function matrixMultiply(matrix, vector) {
+    return [
+        matrix[0][0] * vector[0] + matrix[0][1] * vector[1],
+        matrix[1][0] * vector[0] + matrix[1][1] * vector[1]
+    ];
+}
+
+function pixelToCubic(px, py) {
+    transformationMatrix = [
+        [Math.sqrt(3) / 3, -1 / 3],
+        [0, 2 / 3]
+    ];
+
+    let [q, r] = matrixMultiply(transformationMatrix, [px, py]).map(i => i / scale);
+    return cubicRound(q, r, -q - r);
+}
+
 function cubicToPixel(q, r) {
     qBasis = { x: Math.sqrt(3), y: 0 };
     rBasis = { x: Math.sqrt(3) / 2, y: 3 / 2 };
@@ -167,8 +213,7 @@ function cubicToPixel(q, r) {
         [qBasis.y, rBasis.y]
     ];
 
-    let x = scale * (qBasis.x * q + rBasis.x * r);
-    let y = scale * (qBasis.y * q + rBasis.y * r);
+    let [x, y] = matrixMultiply(transformationMatrix, [q, r]).map(i => i * scale);
     return { x, y };
 }
 
@@ -211,7 +256,37 @@ function generateHexMaze(nodes, edges) {
     }
 }
 
+let player = { q: 2, r: 5, s: -7 };
+
+function aStar(start, end) {
+    // TODO
+}
+
+function render() {
+    // Reset
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Render hex grid
+    graph.render();
+    
+    //  player
+    let { x, y } = cubicToPixel(player.q, player.r);
+    ctx.fillStyle = '#ff0000';
+    ctx.beginPath();
+    ctx.arc(x, y, scale / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+}
+
+canvas.addEventListener('click', (e) => {
+    let { q, r, s } = pixelToCubic(e.offsetX, e.offsetY);
+    player = { q, r, s };
+});
+
 const graph = new HexGrid();
 graph.generateFourtyNineHexes(2, 5);
 generateHexMaze(Object.values(graph.nodes), graph.edges);
 graph.render();
+
+const fps = 10;
+setInterval(render, 1000 / fps);
