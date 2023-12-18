@@ -147,8 +147,14 @@ class HexGrid {
         for (let offset of offsets) {
             created = created.concat(this.generateSevenHexes(q + offset.q, r + offset.r));
         }
+        // Connect with edges
         this.createEdgesBetween(created);
-        this.stitchTogetherWithEdges(created, Object.values(this.nodes));
+        this.stitchTogetherWithEdges(
+            created,
+            Object.values(this.nodes).filter(node => !created.includes(node))
+        );
+        // Build MST with edges
+        generateHexMaze(created, created.map(node => node.edges).flat());
         return created;
     }
 
@@ -157,7 +163,6 @@ class HexGrid {
             for (let j = i + 1; j < nodes.length; j++) {
                 let a = nodes[i];
                 let b = nodes[j];
-                if (a === b) continue;
                 if (cubicDistance(a, b) > 1) continue;
                 this.addEdge(a, b);
             }
@@ -165,8 +170,10 @@ class HexGrid {
     }
 
     stitchTogetherWithEdges(nodesA, nodesB) {
-        for (let nodeA of nodesA) {
-            for (let nodeB of nodesB) {
+        for (let i = 0; i < nodesA.length; i++) {
+            for (let j = 0; j < nodesB.length; j++) {
+                let nodeA = nodesA[i];
+                let nodeB = nodesB[j];
                 if (cubicDistance(nodeA, nodeB) == 1) {
                     this.addEdge(nodeA, nodeB);
                 }
@@ -244,9 +251,7 @@ function generateHexMaze(nodes, edges) {
 
     while (visited.length < nodes.length) {
         // Find all edges that are connected to the visited nodes
-        let frontier = visited.reduce((frontier, node) => {
-            return frontier.concat(node.edges);
-        }, []);
+        let frontier = visited.map(node => node.edges).flat();
         // Filter to only edges that connect to unvisited nodes
         frontier = frontier.filter(edge => {
             return !visited.includes(edge.a) || !visited.includes(edge.b);
@@ -295,6 +300,7 @@ class Pathfinder {
         this.came_from.set(player.pos, null);
         this.costs = new Map();
         this.costs.set(player.pos, 0);
+        this.path = [];
         this.pathfindingState = STATES.SEARCHING;
     }
 
@@ -437,11 +443,19 @@ function fillHex(node, color) {
     ctx.closePath();
 }
 
+function snap(q, r) {
+    return [
+        Math.round(q / 7) * 7,
+        Math.round(r / 7) * 7
+    ]
+}
+
 canvas.addEventListener('click', (e) => {
     let { q, r, s } = pixelToCubic(e.offsetX, e.offsetY);
     let clickedNode = graph.findNode(q, r, s);
     if (!clickedNode) {
-        // TODO: Generate more map
+        let [snappedQ, snappedR] = snap(q, r);
+        graph.generateFourtyNineHexes(snappedQ, snappedR);
         return;
     }
     if (player.pos === clickedNode) {
@@ -479,7 +493,6 @@ document.addEventListener('keydown', (e) => {
 const graph = new HexGrid();
 graph.generateFourtyNineHexes(0, 0);
 graph.generateFourtyNineHexes(7, 0);
-generateHexMaze(Object.values(graph.nodes), graph.edges);
 
 const pathfinder = new Pathfinder();
 
