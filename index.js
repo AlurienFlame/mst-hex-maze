@@ -251,73 +251,99 @@ function generateHexMaze(nodes, edges) {
     }
 }
 
-let frontier;
-let came_from;
-let costs;
 const STATES = {
     WAITING: 0,
     SEARCHING: 1,
     RECONSTRUCTING: 2,
     FOLLOWING: 3
 };
-let pathfindingState = STATES.WAITING;
-function initializeNewPathfinding() {
-    frontier = [player.pos];
-    came_from = new Map();
-    costs = new Map();
-    costs.set(player.pos, 0);
-    pathfindingState = STATES.SEARCHING;
-}
 
-let path;
-function iteratePathfinding() {
-    if (pathfindingState === STATES.WAITING) {
-        return;
-    } else if (pathfindingState === STATES.SEARCHING) {
+class Pathfinder {
+    frontier;
+    came_from;
+    costs;
+    pathfindingState = STATES.WAITING;
+    path;
+    reset() {
+        this.frontier = [player.pos];
+        this.came_from = new Map();
+        this.costs = new Map();
+        this.costs.set(player.pos, 0);
+        this.pathfindingState = STATES.SEARCHING;
+    }
 
-        // visit the next node of the frontier
-        frontier.sort((a, b) => costs.get(a) - costs.get(b));
-        let current = frontier.shift();
-
-        // if we found the goal, reconstruct the path
-        if (current === goal.pos) {
-            pathfindingState = STATES.RECONSTRUCTING;
+    iteratePathfinding() {
+        if (this.pathfindingState === STATES.WAITING) {
             return;
-        }
+        } else if (this.pathfindingState === STATES.SEARCHING) {
 
-        // add all its neighbors to the frontier
-        let neighbors = current.edges
-            .filter(edge => edge.open)
-            .map(edge => edge.a === current ? edge.b : edge.a);
+            // visit the next node of the frontier
+            this.frontier.sort((a, b) => this.costs.get(a) - this.costs.get(b));
+            let current = this.frontier.shift();
 
-        for (let neighbor of neighbors) {
-            let newCost = cubicDistance(neighbor, player.pos) + cubicDistance(neighbor, goal.pos);
-            if (!costs.has(neighbor) || newCost < neighbor.cost) {
-                costs.set(neighbor, newCost);
-                frontier.push(neighbor);
-                came_from.set(neighbor, current);
+            // if we found the goal, reconstruct the path
+            if (current === goal.pos) {
+                this.pathfindingState = STATES.RECONSTRUCTING;
+                return;
+            }
+
+            // add all its neighbors to the frontier
+            let neighbors = current.edges
+                .filter(edge => edge.open)
+                .map(edge => edge.a === current ? edge.b : edge.a);
+
+            for (let neighbor of neighbors) {
+                let newCost = cubicDistance(neighbor, player.pos) + cubicDistance(neighbor, goal.pos);
+                if (!this.costs.has(neighbor) || newCost < neighbor.cost) {
+                    this.costs.set(neighbor, newCost);
+                    this.frontier.push(neighbor);
+                    this.came_from.set(neighbor, current);
+                }
+            }
+        } else if (this.pathfindingState === STATES.RECONSTRUCTING) {
+            // Reconstruct the path
+            this.path = [];
+            let current = goal.pos;
+            while (current !== player.pos) {
+                this.path.unshift(current);
+                current = this.came_from.get(current);
+            }
+            this.pathfindingState = STATES.FOLLOWING;
+        } else if (this.pathfindingState === STATES.FOLLOWING) {
+            // Step player along path
+            player.pos = this.path?.shift();
+            if (player.pos === goal.pos) {
+                this.pathfindingState = STATES.WAITING;
             }
         }
-    } else if (pathfindingState === STATES.RECONSTRUCTING) {
-        // Reconstruct the path
-        path = [];
-        let current = goal.pos;
-        while (current !== player.pos) {
-            path.unshift(current);
-            current = came_from.get(current);
+    }
+
+    render() {
+        // Searching
+        if (this.pathfindingState === STATES.SEARCHING) {
+            for (let node of this.frontier || []) {
+                fillHex(node, '#fc8479');
+            }
+            for (let node of Array.from(this.came_from.values()) || []) {
+                fillHex(node, '#fcbbb5');
+            }
         }
-        pathfindingState = STATES.FOLLOWING;
-    } else if (pathfindingState === STATES.FOLLOWING) {
-        // Step player along path
-        player.pos = path?.shift();
-        if (player.pos === goal.pos) {
-            pathfindingState = STATES.WAITING;
+
+        // Following
+        // TODO: Dynamic curving
+        if (this.path?.length) {
+            ctx.lineWidth = 5;
+            connect(player.pos, this.path[0], '#46992f');
+            for (let i = 0; i < this.path.length - 1; i++) {
+                connect(this.path[i], this.path[i + 1], '#46992f');
+            }
+            ctx.lineWidth = 1;
         }
     }
 }
 
 function loop() {
-    iteratePathfinding();
+    pathfinder.iteratePathfinding();
     render();
 }
 
@@ -326,31 +352,13 @@ function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.lineWidth = 1;
 
-    // pathfinding
-    if (pathfindingState === STATES.SEARCHING) {
-        for (let node of frontier || []) {
-            fillHex(node, '#fc8479');
-        }
-        for (let node of Array.from(came_from.values()) || []) {
-            fillHex(node, '#fcbbb5');
-        }
-    }
+    // Render pathfinding
+    pathfinder.render();
 
     // Render hex grid
     graph.render();
 
-    // path
-    // TODO: Dynamic curving
-    if (path?.length) {
-        ctx.lineWidth = 5;
-        connect(player.pos, path[0], '#46992f');
-        for (let i = 0; i < path.length - 1; i++) {
-            connect(path[i], path[i + 1], '#46992f');
-        }
-        ctx.lineWidth = 1;
-    }
-
-    //  player
+    // player
     mark(player.pos, '#ff0000');
 
     // goal
@@ -400,7 +408,7 @@ canvas.addEventListener('click', (e) => {
         return;
     }
     goal.pos = graph.findNode(q, r, s);
-    initializeNewPathfinding();
+    pathfinder.reset();
 });
 
 let scale = 50;
@@ -431,6 +439,8 @@ document.addEventListener('keydown', (e) => {
 const graph = new HexGrid();
 graph.generateFourtyNineHexes(0, 0);
 generateHexMaze(Object.values(graph.nodes), graph.edges);
+
+const pathfinder = new Pathfinder();
 
 let player = { pos: graph.findNode(0, 0, 0) };
 let goal = {};
