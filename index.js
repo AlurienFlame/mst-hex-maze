@@ -13,7 +13,8 @@ class HexGrid {
 
     addNode(q, r, s) {
         if (this.findNode(q, r, s)) {
-            return;
+            console.warn(`Node ${q},${r},${s} already exists`);
+            return this.findNode(q, r, s);
         }
         let newNode = { q, r, s };
         this.nodes[`${q},${r},${s}`] = newNode;
@@ -21,6 +22,13 @@ class HexGrid {
     }
 
     addEdge(a, b) {
+        let existingEdge = this.edges.find(edge => {
+            return (edge.a === a && edge.b === b) || (edge.a === b && edge.b === a);
+        });
+        if (existingEdge) {
+            console.warn(`Edge between ${a.q},${a.r},${a.s} and ${b.q},${b.r},${b.s} already exists`);
+            return;
+        }
         let newEdge = { a, b, open: false };
         this.edges.push(newEdge);
 
@@ -78,7 +86,8 @@ class HexGrid {
             ];
             for (let direction of directions) {
                 let neighbor = this.findNode(node.q + direction.q, node.r + direction.r, -(node.q + direction.q) - (node.r + direction.r));
-                if (!neighbor) {
+                // No connected neighbor in this direction
+                if (!neighbor || !node.edges.some(edge => edge.a === neighbor || edge.b === neighbor)) {
                     let pointA = cubicToPixel(node.q, node.r);
                     let pointB = cubicToPixel(node.q + direction.q, node.r + direction.r);
                     let halfway = {
@@ -227,9 +236,14 @@ function generateHexMaze(nodes, edges) {
         let frontier = visited.reduce((frontier, node) => {
             return frontier.concat(node.edges);
         }, []);
+        // Filter to only edges that connect to unvisited nodes
         frontier = frontier.filter(edge => {
             return !visited.includes(edge.a) || !visited.includes(edge.b);
         });
+        if (!frontier.length) {
+            console.warn('Disconnected graph');
+            break;
+        }
 
         // Find the smallest of those nodes
         let minEdge = frontier.reduce((min, edge) => {
@@ -404,7 +418,12 @@ function fillHex(node, color) {
 
 canvas.addEventListener('click', (e) => {
     let { q, r, s } = pixelToCubic(e.offsetX, e.offsetY);
-    if (player.pos === graph.findNode(q, r, s)) {
+    let clickedNode = graph.findNode(q, r, s);
+    if (!clickedNode) {
+        // TODO: Generate more map
+        return;
+    }
+    if (player.pos === clickedNode) {
         return;
     }
     goal.pos = graph.findNode(q, r, s);
@@ -438,6 +457,7 @@ document.addEventListener('keydown', (e) => {
 
 const graph = new HexGrid();
 graph.generateFourtyNineHexes(0, 0);
+graph.generateFourtyNineHexes(7, 0);
 generateHexMaze(Object.values(graph.nodes), graph.edges);
 
 const pathfinder = new Pathfinder();
