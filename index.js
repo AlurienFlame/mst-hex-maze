@@ -1,8 +1,5 @@
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
-const scale = 50;
-let hexWidth = Math.sqrt(3) * scale;
-let hexHeight = 2 * scale;
 
 class HexGrid {
     constructor() {
@@ -104,7 +101,7 @@ class HexGrid {
         // Coordinates
         for (let node of Object.values(this.nodes)) {
             let { x, y } = cubicToPixel(node.q, node.r);
-            ctx.font = '10px Arial';
+            ctx.font = `${scale / 4}px Arial`;
             ctx.fillStyle = '#000000';
             ctx.fillText(`${node.q},${node.r},${node.s}`, x, y);
         }
@@ -187,6 +184,10 @@ function matrixMultiply(matrix, vector) {
 }
 
 function pixelToCubic(px, py) {
+    // Exactly reverse the cubicToPixel function
+    px -= canvas.width / 2 + cameraPos.x;
+    py -= canvas.height / 2 + cameraPos.y;
+
     transformationMatrix = [
         [Math.sqrt(3) / 3, -1 / 3],
         [0, 2 / 3]
@@ -205,6 +206,9 @@ function cubicToPixel(q, r) {
     ];
 
     let [x, y] = matrixMultiply(transformationMatrix, [q, r]).map(i => i * scale);
+
+    x += canvas.width / 2 + cameraPos.x;
+    y += canvas.height / 2 + cameraPos.y;
     return { x, y };
 }
 
@@ -291,8 +295,10 @@ function loop() {
         goal.pos = null;
     }
 
-    // Render
+    render();
+}
 
+function render() {
     // Reset
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -342,11 +348,35 @@ canvas.addEventListener('click', (e) => {
     path = aStar(player.pos, goal.pos);
 });
 
+let scale = 50;
+const zoomSpeed = 0.05;
+const maxScale = 100;
+const minScale = 10;
+document.addEventListener('wheel', (e) => {
+    scale -= e.deltaY * zoomSpeed;
+    scale = Math.max(minScale, Math.min(maxScale, scale));
+});
+
+let cameraPos = { x: 0, y: 0 };
+document.addEventListener('keydown', (e) => {
+    // pan
+    // TODO: Culling
+    if (e.key === 'ArrowLeft') {
+        cameraPos.x += scale;
+    } else if (e.key === 'ArrowRight') {
+        cameraPos.x -= scale;
+    } else if (e.key === 'ArrowUp') {
+        cameraPos.y += scale;
+    } else if (e.key === 'ArrowDown') {
+        cameraPos.y -= scale;
+    }
+});
+
 const graph = new HexGrid();
-graph.generateFourtyNineHexes(2, 5);
+graph.generateFourtyNineHexes(0, 0);
 generateHexMaze(Object.values(graph.nodes), graph.edges);
 
-let player = { pos: graph.findNode(2, 5, -7) };
+let player = { pos: graph.findNode(0, 0, 0) };
 let goal = {};
 let path = [];
 
