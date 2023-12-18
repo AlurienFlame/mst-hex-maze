@@ -148,6 +148,7 @@ class HexGrid {
             created = created.concat(this.generateSevenHexes(q + offset.q, r + offset.r));
         }
         this.createEdgesBetween(created);
+        this.stitchTogetherWithEdges(created, Object.values(this.nodes));
         return created;
     }
 
@@ -159,6 +160,16 @@ class HexGrid {
                 if (a === b) continue;
                 if (cubicDistance(a, b) > 1) continue;
                 this.addEdge(a, b);
+            }
+        }
+    }
+
+    stitchTogetherWithEdges(nodesA, nodesB) {
+        for (let nodeA of nodesA) {
+            for (let nodeB of nodesB) {
+                if (cubicDistance(nodeA, nodeB) == 1) {
+                    this.addEdge(nodeA, nodeB);
+                }
             }
         }
     }
