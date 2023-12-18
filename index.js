@@ -251,19 +251,38 @@ function generateHexMaze(nodes, edges) {
     }
 }
 
-function aStar(start, end) {
-    // TODO: make this actually a* and not just bfs
-    let frontier = [start];
-    let visited = [];
+let frontier;
+let visited;
+let came_from;
+const STATES = {
+    WAITING: 0,
+    SEARCHING: 1,
+    RECONSTRUCTING: 2,
+    FOLLOWING: 3
+};
+let pathfindingState = STATES.WAITING;
+function initializeNewPathfinding() {
+    frontier = [player.pos];
+    visited = [];
     came_from = new Map();
+    pathfindingState = STATES.SEARCHING;
+}
 
-    // Search for the end node
-    while (frontier.length) {
+let path;
+function iteratePathfinding() {
+    // TODO: make this actually a* and not just bfs
+    if (pathfindingState === STATES.WAITING) {
+        return;
+    } else if (pathfindingState === STATES.SEARCHING) {
+
         // visit the next node of the frontier
         let current = frontier.shift();
         visited.push(current);
-        if (current === end) {
-            break;
+
+        // if we found the goal, reconstruct the path
+        if (current === goal.pos) {
+            pathfindingState = STATES.RECONSTRUCTING;
+            return;
         }
 
         // add all its neighbors to the frontier
@@ -277,24 +296,26 @@ function aStar(start, end) {
                 }
             }
         }
+    } else if (pathfindingState === STATES.RECONSTRUCTING) {
+        // Reconstruct the path
+        path = [];
+        let current = goal.pos;
+        while (current !== player.pos) {
+            path.unshift(current);
+            current = came_from.get(current);
+        }
+        pathfindingState = STATES.FOLLOWING;
+    } else if (pathfindingState === STATES.FOLLOWING) {
+        // Step player along path
+        player.pos = path?.shift();
+        if (player.pos === goal.pos) {
+            pathfindingState = STATES.WAITING;
+        }
     }
-
-    // Reconstruct the path
-    let path = [];
-    while (end !== start) {
-        path.unshift(end);
-        end = came_from.get(end);
-    }
-    return path;
 }
 
 function loop() {
-    // Step player along path
-    player.pos = path.shift() || player.pos;
-    if (player.pos === goal.pos) {
-        goal.pos = null;
-    }
-
+    iteratePathfinding();
     render();
 }
 
@@ -305,8 +326,18 @@ function render() {
     // Render hex grid
     graph.render();
 
+    // pathfinding
+    if (pathfindingState === STATES.SEARCHING) {
+        for (let node of frontier || []) {
+            mark(node, '#ffff00');
+        }
+        for (let node of visited || []) {
+            mark(node, '#ff00ff');
+        }
+    }
+
     // path
-    if (path.length) {
+    if (path?.length) {
         connect(player.pos, path[0], '#00ff00');
         for (let i = 0; i < path.length - 1; i++) {
             connect(path[i], path[i + 1], '#00ff00');
@@ -345,7 +376,7 @@ function connect(nodeA, nodeB, color) {
 canvas.addEventListener('click', (e) => {
     let { q, r, s } = pixelToCubic(e.offsetX, e.offsetY);
     goal.pos = graph.findNode(q, r, s);
-    path = aStar(player.pos, goal.pos);
+    initializeNewPathfinding();
 });
 
 let scale = 50;
@@ -378,7 +409,6 @@ generateHexMaze(Object.values(graph.nodes), graph.edges);
 
 let player = { pos: graph.findNode(0, 0, 0) };
 let goal = {};
-let path = [];
 
-const fps = 10;
+const fps = 50;
 setInterval(loop, 1000 / fps);
