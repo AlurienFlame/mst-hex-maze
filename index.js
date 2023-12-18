@@ -253,6 +253,7 @@ function generateHexMaze(nodes, edges) {
 
 let frontier;
 let came_from;
+let costs;
 const STATES = {
     WAITING: 0,
     SEARCHING: 1,
@@ -263,6 +264,8 @@ let pathfindingState = STATES.WAITING;
 function initializeNewPathfinding() {
     frontier = [player.pos];
     came_from = new Map();
+    costs = new Map();
+    costs.set(player.pos, 0);
     pathfindingState = STATES.SEARCHING;
 }
 
@@ -273,6 +276,7 @@ function iteratePathfinding() {
     } else if (pathfindingState === STATES.SEARCHING) {
 
         // visit the next node of the frontier
+        frontier.sort((a, b) => costs.get(a) - costs.get(b));
         let current = frontier.shift();
 
         // if we found the goal, reconstruct the path
@@ -282,14 +286,16 @@ function iteratePathfinding() {
         }
 
         // add all its neighbors to the frontier
-        for (let edge of current.edges) {
-            if (!edge.open) continue;
-            let neighbor = edge.a === current ? edge.b : edge.a;
-            if (!came_from.has(neighbor) && !frontier.includes(neighbor)) {
+        let neighbors = current.edges
+            .filter(edge => edge.open)
+            .map(edge => edge.a === current ? edge.b : edge.a);
+
+        for (let neighbor of neighbors) {
+            let newCost = cubicDistance(neighbor, player.pos) + cubicDistance(neighbor, goal.pos);
+            if (!costs.has(neighbor) || newCost < neighbor.cost) {
+                costs.set(neighbor, newCost);
                 frontier.push(neighbor);
-                if (!came_from.has(neighbor)) {
-                    came_from.set(neighbor, current);
-                }
+                came_from.set(neighbor, current);
             }
         }
     } else if (pathfindingState === STATES.RECONSTRUCTING) {
@@ -401,7 +407,8 @@ let scale = 50;
 const zoomSpeed = 0.05;
 const maxScale = 100;
 const minScale = 10;
-document.addEventListener('wheel', (e) => {
+canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
     scale -= e.deltaY * zoomSpeed;
     scale = Math.max(minScale, Math.min(maxScale, scale));
 });
