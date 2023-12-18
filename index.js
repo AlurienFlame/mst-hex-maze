@@ -252,7 +252,6 @@ function generateHexMaze(nodes, edges) {
 }
 
 let frontier;
-let visited;
 let came_from;
 const STATES = {
     WAITING: 0,
@@ -263,21 +262,18 @@ const STATES = {
 let pathfindingState = STATES.WAITING;
 function initializeNewPathfinding() {
     frontier = [player.pos];
-    visited = [];
     came_from = new Map();
     pathfindingState = STATES.SEARCHING;
 }
 
 let path;
 function iteratePathfinding() {
-    // TODO: make this actually a* and not just bfs
     if (pathfindingState === STATES.WAITING) {
         return;
     } else if (pathfindingState === STATES.SEARCHING) {
 
         // visit the next node of the frontier
         let current = frontier.shift();
-        visited.push(current);
 
         // if we found the goal, reconstruct the path
         if (current === goal.pos) {
@@ -289,7 +285,7 @@ function iteratePathfinding() {
         for (let edge of current.edges) {
             if (!edge.open) continue;
             let neighbor = edge.a === current ? edge.b : edge.a;
-            if (!visited.includes(neighbor) && !frontier.includes(neighbor)) {
+            if (!came_from.has(neighbor) && !frontier.includes(neighbor)) {
                 frontier.push(neighbor);
                 if (!came_from.has(neighbor)) {
                     came_from.set(neighbor, current);
@@ -329,7 +325,7 @@ function render() {
         for (let node of frontier || []) {
             fillHex(node, '#fc8479');
         }
-        for (let node of visited || []) {
+        for (let node of Array.from(came_from.values()) || []) {
             fillHex(node, '#fcbbb5');
         }
     }
@@ -394,6 +390,9 @@ function fillHex(node, color) {
 
 canvas.addEventListener('click', (e) => {
     let { q, r, s } = pixelToCubic(e.offsetX, e.offsetY);
+    if (player.pos === graph.findNode(q, r, s)) {
+        return;
+    }
     goal.pos = graph.findNode(q, r, s);
     initializeNewPathfinding();
 });
@@ -429,5 +428,5 @@ generateHexMaze(Object.values(graph.nodes), graph.edges);
 let player = { pos: graph.findNode(0, 0, 0) };
 let goal = {};
 
-const fps = 50;
+const fps = 30;
 setInterval(loop, 1000 / fps);
