@@ -322,26 +322,30 @@ function loop() {
 function render() {
     // Reset
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Render hex grid
-    graph.render();
+    ctx.lineWidth = 1;
 
     // pathfinding
     if (pathfindingState === STATES.SEARCHING) {
         for (let node of frontier || []) {
-            mark(node, '#ffff00');
+            fillHex(node, '#fc8479');
         }
         for (let node of visited || []) {
-            mark(node, '#ff00ff');
+            fillHex(node, '#fcbbb5');
         }
     }
 
+    // Render hex grid
+    graph.render();
+
     // path
+    // TODO: Dynamic curving
     if (path?.length) {
-        connect(player.pos, path[0], '#00ff00');
+        ctx.lineWidth = 5;
+        connect(player.pos, path[0], '#46992f');
         for (let i = 0; i < path.length - 1; i++) {
-            connect(path[i], path[i + 1], '#00ff00');
+            connect(path[i], path[i + 1], '#46992f');
         }
+        ctx.lineWidth = 1;
     }
 
     //  player
@@ -370,6 +374,21 @@ function connect(nodeA, nodeB, color) {
     ctx.moveTo(pointA.x, pointA.y);
     ctx.lineTo(pointB.x, pointB.y);
     ctx.stroke();
+    ctx.closePath();
+}
+
+function fillHex(node, color) {
+    ctx.fillStyle = color;
+    let { x, y } = cubicToPixel(node.q, node.r);
+    ctx.beginPath();
+    ctx.translate(x, y);
+    ctx.moveTo(0, -scale);
+    for (let i = 0; i < 6; i++) {
+        ctx.rotate(Math.PI / 3);
+        ctx.lineTo(0, -scale);
+    }
+    ctx.fill();
+    ctx.translate(-x, -y);
     ctx.closePath();
 }
 
