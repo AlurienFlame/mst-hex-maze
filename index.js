@@ -281,6 +281,7 @@ class Pathfinder {
     reset() {
         this.frontier = [player.pos];
         this.came_from = new Map();
+        this.came_from.set(player.pos, null);
         this.costs = new Map();
         this.costs.set(player.pos, 0);
         this.pathfindingState = STATES.SEARCHING;
@@ -290,6 +291,11 @@ class Pathfinder {
         if (this.pathfindingState === STATES.WAITING) {
             return;
         } else if (this.pathfindingState === STATES.SEARCHING) {
+            if (!this.frontier.length) {
+                console.warn('No path found');
+                this.pathfindingState = STATES.WAITING;
+                return;
+            }
 
             // visit the next node of the frontier
             this.frontier.sort((a, b) => this.costs.get(a) - this.costs.get(b));
@@ -323,6 +329,8 @@ class Pathfinder {
                 current = this.came_from.get(current);
             }
             this.pathfindingState = STATES.FOLLOWING;
+            this.frontier = [];
+            this.came_from = new Map();
         } else if (this.pathfindingState === STATES.FOLLOWING) {
             // Step player along path
             player.pos = this.path?.shift();
@@ -334,12 +342,14 @@ class Pathfinder {
 
     render() {
         // Searching
-        if (this.pathfindingState === STATES.SEARCHING) {
-            for (let node of this.frontier || []) {
-                fillHex(node, '#fc8479');
-            }
-            for (let node of Array.from(this.came_from.values()) || []) {
+        if (this.came_from?.size) {
+            for (let node of Array.from(this.came_from.keys())) {
                 fillHex(node, '#fcbbb5');
+            }
+        }
+        if (this.frontier?.length) {
+            for (let node of this.frontier) {
+                fillHex(node, '#fc8479');
             }
         }
 
