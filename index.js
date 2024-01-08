@@ -62,15 +62,15 @@ class HexGrid {
                 x: (pointA.x + pointB.x) / 2,
                 y: (pointA.y + pointB.y) / 2
             };
+            ctx.save();
             ctx.beginPath();
             ctx.translate(halfway.x, halfway.y);
             ctx.rotate(Math.atan2(pointB.y - pointA.y, pointB.x - pointA.x));
             ctx.moveTo(0, -scale / 2);
             ctx.lineTo(0, scale / 2);
             ctx.stroke();
-            ctx.rotate(-Math.atan2(pointB.y - pointA.y, pointB.x - pointA.x));
-            ctx.translate(-halfway.x, -halfway.y);
             ctx.closePath();
+            ctx.restore();
         }
 
         // Outer border
@@ -94,15 +94,15 @@ class HexGrid {
                         x: (pointA.x + pointB.x) / 2,
                         y: (pointA.y + pointB.y) / 2
                     };
+                    ctx.save();
                     ctx.beginPath();
                     ctx.translate(halfway.x, halfway.y);
                     ctx.rotate(Math.atan2(pointB.y - pointA.y, pointB.x - pointA.x));
                     ctx.moveTo(0, -scale / 2);
                     ctx.lineTo(0, scale / 2);
                     ctx.stroke();
-                    ctx.rotate(-Math.atan2(pointB.y - pointA.y, pointB.x - pointA.x));
-                    ctx.translate(-halfway.x, -halfway.y);
                     ctx.closePath();
+                    ctx.restore();
                 }
             }
         }
@@ -431,6 +431,7 @@ function connect(nodeA, nodeB, color) {
 function fillHex(node, color) {
     ctx.fillStyle = color;
     let { x, y } = cubicToPixel(node.q, node.r);
+    ctx.save();
     ctx.beginPath();
     ctx.translate(x, y);
     ctx.moveTo(0, -scale);
@@ -439,8 +440,8 @@ function fillHex(node, color) {
         ctx.lineTo(0, -scale);
     }
     ctx.fill();
-    ctx.translate(-x, -y);
     ctx.closePath();
+    ctx.restore();
 }
 
 function snap(q, r) {
