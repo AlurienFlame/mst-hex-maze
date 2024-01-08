@@ -5,6 +5,8 @@ class HexGrid {
     constructor() {
         this.nodes = {};
         this.edges = [];
+        this.minimumTree = [];
+        this.visited = [];
     }
 
     findNode(q, r, s) {
@@ -154,7 +156,8 @@ class HexGrid {
             Object.values(this.nodes).filter(node => !created.includes(node))
         );
         // Build MST with edges
-        generateHexMaze(created, created.map(node => node.edges).flat());
+        generateHexMaze(Object.values(this.nodes), Object.values(this.nodes).map(node => node.edges).flat(),
+            this.minimumTree, this.visited);
         return created;
     }
 
@@ -239,15 +242,15 @@ function cubicToPixel(q, r) {
     return { x, y };
 }
 
-function generateHexMaze(nodes, edges) {
+function generateHexMaze(nodes, edges, spanningTree, visited) {
     // Abstract the grid to a graph and apply prim's
+    if (visited.length === 0) {
+        visited.push(nodes[0]);
+    }
 
     for (let edge of edges) {
         edge.weight = Math.random();
     }
-
-    let visited = [nodes[0]];
-    let spanningTree = [];
 
     while (visited.length < nodes.length) {
         // Find all edges that are connected to the visited nodes
