@@ -150,10 +150,9 @@ class HexGrid {
             created = created.concat(this.generateSevenHexes(q + offset.q, r + offset.r));
         }
         // Connect with edges
-        this.createEdgesBetween(created);
         this.stitchTogetherWithEdges(
             created,
-            Object.values(this.nodes).filter(node => !created.includes(node))
+            Object.values(this.nodes)
         );
         // Build MST with edges
         generateHexMaze(Object.values(this.nodes), Object.values(this.nodes).map(node => node.edges).flat(),
@@ -161,23 +160,12 @@ class HexGrid {
         return created;
     }
 
-    createEdgesBetween(nodes) {
-        for (let i = 0; i < nodes.length; i++) {
-            for (let j = i + 1; j < nodes.length; j++) {
-                let a = nodes[i];
-                let b = nodes[j];
-                if (cubicDistance(a, b) > 1) continue;
-                this.addEdge(a, b);
-            }
-        }
-    }
-
     stitchTogetherWithEdges(nodesA, nodesB) {
         for (let i = 0; i < nodesA.length; i++) {
             for (let j = 0; j < nodesB.length; j++) {
                 let nodeA = nodesA[i];
                 let nodeB = nodesB[j];
-                if (cubicDistance(nodeA, nodeB) == 1) {
+                if (cubicDistance(nodeA, nodeB) === 1) {
                     this.addEdge(nodeA, nodeB);
                 }
             }
